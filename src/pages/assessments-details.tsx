@@ -4,13 +4,17 @@ import Footer from "../layout/footer";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { checkSkillsExamsAvailability } from "../api/adminApis";
 
+interface Skill {
+  SkillName: string;
+  SkillId: string;
+}
+
 const AssessmentsDetails: React.FC = () => {
-  const [availability, setAvailability] = useState<any[]>([]);
+  const [availability, setAvailability] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
   const { title } = location.state || {};
-
   const navigate = useNavigate();
   const { examId } = useParams();
 
@@ -27,15 +31,75 @@ const AssessmentsDetails: React.FC = () => {
     };
 
     fetchAvailability();
-  }, []);
+  }, [examId]);
 
-  const handleAssessmentClick = (skillName: string) => {
-    navigate(`/questions/${examId}`);
+  const handleAssessmentClick = (skillName: string, skillId: string) => {
+    console.log(skillName, skillId);
+    navigate(`/questions/${skillId}`, { state: { skillName } });
   };
+
+  const renderSkillIcon = (
+    skillName: string,
+    skillId: string,
+    imgSrc: string,
+    altText: string,
+    className: string
+  ) => {
+    return (
+      <div
+        className={`icon-bg ${className}`}
+        onClick={() => handleAssessmentClick(skillName, skillId)}
+      >
+        <img src={imgSrc} alt={altText} />
+        <p className="icon-text">
+          {skillName}
+          <br />
+          {getTranslatedSkillName(skillName)}
+        </p>
+      </div>
+    );
+  };
+
+  const getTranslatedSkillName = (skillName: string) => {
+    const translations: Record<string, string> = {
+      Listening: "الاستماع",
+      Speaking: "التحدث",
+      Reading: "القراءة",
+      Writing: "الكتابة",
+    };
+    return translations[skillName] || skillName;
+  };
+
+  const skillIcons = [
+    {
+      skillName: "Listening",
+      imgSrc: "/assets/assessment/hearing.svg",
+      altText: "Hearing",
+      className: "hear-icon",
+    },
+    {
+      skillName: "Speaking",
+      imgSrc: "/assets/assessment/mic.svg",
+      altText: "Mic",
+      className: "mic-icon",
+    },
+    {
+      skillName: "Reading",
+      imgSrc: "/assets/assessment/dictionary.svg",
+      altText: "Dictionary",
+      className: "dic-icon",
+    },
+    {
+      skillName: "Writing",
+      imgSrc: "/assets/assessment/edit.svg",
+      altText: "Edit",
+      className: "edit-icon",
+    },
+  ];
 
   return (
     <div className="mt-5">
-      <Header leftChildren={<p>{title || "Available Assessments"}</p>} />{" "}
+      <Header leftChildren={<p>{title || "Available Assessments"}</p>} />
       <div className="assessments-details-wrapper">
         <p className="title-assessment">{title || "Assessment Title"}</p>
         <div className="details-main">
@@ -57,75 +121,18 @@ const AssessmentsDetails: React.FC = () => {
             {error && <p>Error: {error}</p>}
             {!loading && !error && (
               <>
-                {availability.some(
-                  (skill) => skill.SkillName === "Listening"
-                ) && (
-                  <div
-                    className="icon-bg hear-icon"
-                    onClick={() => handleAssessmentClick("Listening")}
-                  >
-                    <img src="/assets/assessment/hearing.svg" alt="Hearing" />
-                    <p className="icon-text">
-                      Listening
-                      <br />
-                      الاستماع
-                    </p>
-                  </div>
-                )}
-                {availability.some(
-                  (skill) => skill.SkillName === "Speaking"
-                ) && (
-                  <div
-                    className="icon-bg mic-icon"
-                    onClick={() => handleAssessmentClick("Speaking")}
-                  >
-                    <img src="/assets/assessment/mic.svg" alt="Mic" />
-                    <p className="icon-text">
-                      Speaking
-                      <br />
-                      التحدث
-                    </p>
-                  </div>
-                )}
-                {availability.some(
-                  (skill) => skill.SkillName === "Reading"
-                ) && (
-                  <div
-                    className="icon-bg dic-icon"
-                    // onClick={() => handleAssessmentClick("Reading")}
-                    onClick={() => {
-                      navigate("/reading-questions");
-                      window.scroll({
-                        top: 0,
-                        behavior: "smooth",
-                      });
-                    }}
-                  >
-                    <img
-                      src="/assets/assessment/dictionary.svg"
-                      alt="Dictionary"
-                    />
-                    <p className="icon-text">
-                      Reading
-                      <br />
-                      القراءة
-                    </p>
-                  </div>
-                )}
-                {availability.some(
-                  (skill) => skill.SkillName === "Writing"
-                ) && (
-                  <div
-                    className="icon-bg edit-icon"
-                    onClick={() => handleAssessmentClick("Writing")}
-                  >
-                    <img src="/assets/assessment/edit.svg" alt="Edit" />
-                    <p className="icon-text">
-                      Writing
-                      <br />
-                      الكتابة
-                    </p>
-                  </div>
+                {skillIcons.map(({ skillName, imgSrc, altText, className }) =>
+                  availability.some((skill) => skill.SkillName === skillName)
+                    ? renderSkillIcon(
+                        skillName,
+                        availability.find(
+                          (skill) => skill.SkillName === skillName
+                        )?.ExamId || "",
+                        imgSrc,
+                        altText,
+                        className
+                      )
+                    : null
                 )}
               </>
             )}

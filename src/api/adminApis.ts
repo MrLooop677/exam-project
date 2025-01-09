@@ -69,6 +69,35 @@ export const checkSkillsExamsAvailability = async (id) => {
       : new Error("Failed to check skills exams availability");
   }
 };
+export const getAllQuestionsReading = async (id) => {
+  try {
+    const response = await apiInstance.get(
+      `/Student/GetStudentModelExam?Skill=1&ExamId=${id}`
+    );
+
+    // Assuming the response data contains the availability information
+    return response.data;
+  } catch (error: any) {
+    throw error.response
+      ? error.response.data
+      : new Error("Failed to check skills exams availability");
+  }
+};
+export const submitExamData = async (payload) => {
+  try {
+    const response = await apiInstance.post(
+      `/Student/SubmitStudentAnswerModelExam`,
+      payload
+    );
+
+    // Assuming the response data contains the availability information
+    return response.data;
+  } catch (error: any) {
+    throw error.response
+      ? error.response.data
+      : new Error("Failed to check skills exams availability");
+  }
+};
 
 export const searchSchools = async (
   keyword: string = "",
