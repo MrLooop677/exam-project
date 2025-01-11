@@ -16,37 +16,66 @@ const SpeakingQuestions: React.FC = () => {
   // record voice
 
   const [audioElements, setAudioElements] = useState<
-    { key: number; src: string }[]
+    { key: number; src: string }[][]
   >([]);
   console.log("audioElements", audioElements);
 
-  const addAudioElement = (blob: Blob) => {
+  const addAudioElement = (
+    blob: Blob,
+    topicIndex: number,
+    questionIndex: number
+  ) => {
     const url = URL.createObjectURL(blob);
-
-    // Create a unique key for each audio element
     const audioKey = Date.now();
 
-    // Store audio `src` and its key in the state
-    setAudioElements((prev) => [...prev, { key: audioKey, src: url }]);
+    setAudioElements((prev) => {
+      const newAudioElements = [...prev];
+      if (!newAudioElements[topicIndex]) {
+        newAudioElements[topicIndex] = []; // Initialize if not present
+      }
+      if (!newAudioElements[topicIndex][questionIndex]) {
+        newAudioElements[topicIndex][questionIndex] = []; // Initialize if not present
+      }
+      newAudioElements[topicIndex][questionIndex].push({
+        key: audioKey,
+        src: url,
+      });
+      return newAudioElements;
+    });
   };
-  const deleteAudioElement = (key: number) => {
-    // Filter out the audio element to be deleted
-    setAudioElements((prev) => prev.filter((audio) => audio.key !== key));
+
+  const deleteAudioElement = (
+    key: number,
+    topicIndex: number,
+    questionIndex: number
+  ) => {
+    setAudioElements((prev) => {
+      const newAudioElements = [...prev];
+      newAudioElements[topicIndex] = newAudioElements[topicIndex].map(
+        (q, index) => {
+          if (index === questionIndex) {
+            return q.filter((audio) => audio.key !== key); // Filter out the deleted audio
+          }
+          return q; // Return unchanged
+        }
+      );
+      return newAudioElements;
+    });
   };
   // timer
   const [timeLeft, setTimeLeft] = useState(10); // Initial countdown time in seconds
 
-  useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setInterval(() => {
-        setTimeLeft((prevTime) => prevTime - 1);
-      }, 1000);
+  // useEffect(() => {
+  //   if (timeLeft > 0) {
+  //     const timer = setInterval(() => {
+  //       setTimeLeft((prevTime) => prevTime - 1);
+  //     }, 1000);
 
-      return () => clearInterval(timer); // Cleanup on component unmount or when timeLeft changes
-    } else {
-      alert("Time is up!"); // Show warning when timer ends
-    }
-  }, [timeLeft]);
+  //     return () => clearInterval(timer); // Cleanup on component unmount or when timeLeft changes
+  //   } else {
+  //     alert("Time is up!"); // Show warning when timer ends
+  //   }
+  // }, [timeLeft]);
   const handleSubmit = async () => {
     if (!readingQuestions) return;
 
@@ -152,7 +181,7 @@ const SpeakingQuestions: React.FC = () => {
   useEffect(() => {
     const fetchAvailability = async () => {
       try {
-        const availabilityData = await getAllQuestionsReading(examId);
+        const availabilityData = await getAllQuestionsReading(examId, 4);
         setReadingQuestions(availabilityData?.Data);
       } catch (err: any) {
         setError(err.message || "Failed to fetch reading questions");
@@ -211,59 +240,87 @@ const SpeakingQuestions: React.FC = () => {
         </div>
         <div className="reading-timer">
           <img src="/assets/home/timer.svg" alt="" />
+
           <div style={{ textAlign: "center", marginTop: "50px" }}>
             <h1>Time Left: {timeLeft} seconds</h1>
           </div>
         </div>
 
-        <div className="write-about-wrapper mt-10">
-          <div className="img-wrapper">
-            <img src="/assets/exams/school.svg" alt="" />
-          </div>
-
-          <p className="about-title">Write About Your School</p>
-          <div className="writing-area-container">
-            <div>
-              <AudioRecorder
-                onRecordingComplete={addAudioElement}
-                audioTrackConstraints={{
-                  noiseSuppression: true,
-                  echoCancellation: true,
-                }}
-                downloadOnSavePress={false}
-                downloadFileExtension="webm"
-                mediaRecorderOptions={{
-                  audioBitsPerSecond: 128000,
-                }}
-              />
-              <br />
-              <div id="audio-container" className="audio-container">
-                {audioElements.length > 0 ? (
-                  audioElements.map(({ key, src }) => (
-                    <div
-                      key={key}
-                      className="audio-item"
-                      style={{
-                        display: "flex",
-                        gap: "10px",
-                        alignItems: "center",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      <audio controls src={src}></audio>
-                      <FiTrash2
-                        onClick={() => deleteAudioElement(key)}
-                        className="delete-btn"
-                      />
+        {readingQuestions?.Topics?.map((topic: any, topicIndex: number) => (
+          <div key={topicIndex} className="write-about-wrapper mt-10">
+            <h3 className="mb-1 text-[#785ABE] font-semibold text-xl">
+              {topic.TitleEn}
+            </h3>
+            {topic.Questions.map((question, questionIndex) => (
+              <div>
+                <p key={questionIndex}>{question.ContentQuestion}</p>
+                <div className="img-wrapper">
+                  {topic?.File ? (
+                    <img
+                      className="w-full h-96 object-contain"
+                      src={`https://sah-platform-api-egghayfcc4ddeuae.canadacentral-01.azurewebsites.net/${topic.File}`}
+                      alt="Topic Image"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      {/* <span>No Image</span> */}
                     </div>
-                  ))
-                ) : (
-                  <p>No audio recordings yet.</p>
-                )}
+                  )}
+                  {/* <img src="/assets/exams/school.svg" alt="" /> */}
+                </div>
+                <div className="writing-area-container">
+                  <div>
+                    <AudioRecorder
+                      onRecordingComplete={(blob) =>
+                        addAudioElement(blob, topicIndex, questionIndex)
+                      }
+                      audioTrackConstraints={{
+                        noiseSuppression: true,
+                        echoCancellation: true,
+                      }}
+                      downloadOnSavePress={false}
+                      downloadFileExtension="webm"
+                      mediaRecorderOptions={{
+                        audioBitsPerSecond: 128000,
+                      }}
+                    />
+                    <br />
+                    <div id="audio-container" className="audio-container">
+                      {(audioElements[topicIndex]?.[questionIndex] || []).map(
+                        ({ key, src }) => (
+                          <div
+                            key={key}
+                            className="audio-item"
+                            style={{
+                              display: "flex",
+                              gap: "10px",
+                              alignItems: "center",
+                              marginBottom: "10px",
+                            }}
+                          >
+                            <audio controls src={src}></audio>
+                            <FiTrash2
+                              onClick={() =>
+                                deleteAudioElement(
+                                  key,
+                                  topicIndex,
+                                  questionIndex
+                                )
+                              }
+                              className="delete-btn"
+                            />
+                          </div>
+                        )
+                      ) || <p>No audio recordings yet.</p>}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
+
+            {/* <p className="about-title">{topic.TopicContent}</p> */}
           </div>
-        </div>
+        ))}
 
         <div className="submit-and-move">
           <div></div>

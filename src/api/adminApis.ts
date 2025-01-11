@@ -69,10 +69,10 @@ export const checkSkillsExamsAvailability = async (id) => {
       : new Error("Failed to check skills exams availability");
   }
 };
-export const getAllQuestionsReading = async (id) => {
+export const getAllQuestionsReading = async (id, skillNumber) => {
   try {
     const response = await apiInstance.get(
-      `/Student/GetStudentModelExam?Skill=3&ExamId=${id}`
+      `/Student/GetStudentModelExam?Skill=${skillNumber}&ExamId=${id}`
     );
 
     // Assuming the response data contains the availability information

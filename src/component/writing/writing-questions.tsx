@@ -12,6 +12,7 @@ const WritingQuestions: React.FC = () => {
   const [readingQuestions, setReadingQuestions] = useState<any>(null);
   const [fileUploads, setFileUploads] = useState<File[]>([]); // New state to store uploaded files
   const [text, setText] = useState<string>("");
+  const [selectActiveClass, setSelectActiveClass] = useState(null);
 
   const [selectTypeQuestion, setSelectTypeQuestion] = useState<number | null>(
     1
@@ -225,7 +226,7 @@ const WritingQuestions: React.FC = () => {
   useEffect(() => {
     const fetchAvailability = async () => {
       try {
-        const availabilityData = await getAllQuestionsReading(examId);
+        const availabilityData = await getAllQuestionsReading(examId, 3);
         setReadingQuestions(availabilityData?.Data);
       } catch (err: any) {
         setError(err.message || "Failed to fetch reading questions");
@@ -273,17 +274,21 @@ const WritingQuestions: React.FC = () => {
             </div>
             <div className="extra-writing-instruction">
               <div
-                className="instruction-item"
                 onClick={() => setSelectTypeQuestion(1)}
                 style={{ cursor: "pointer" }}
+                className={`instruction-item ${
+                  selectTypeQuestion === 1 ? "active" : ""
+                }`}
               >
                 <img src="/assets/exams/keyboard.svg" alt="" />
                 <p className="keyboard">Write with Keyboard</p>
               </div>
               <div
-                className="instruction-item"
                 onClick={() => setSelectTypeQuestion(2)}
                 style={{ cursor: "pointer" }}
+                className={`instruction-item ${
+                  selectTypeQuestion === 2 ? "active" : ""
+                }`}
               >
                 <img src="/assets/exams/write.svg" alt="" />
                 <p>Hand writing</p>
@@ -294,49 +299,69 @@ const WritingQuestions: React.FC = () => {
         <div className="reading-timer">
           <img src="/assets/home/timer.svg" alt="" />
         </div>
+
         {readingQuestions?.Topics?.map((topic: any, topicIndex: number) => (
-          <div key={topicIndex} className="topic-wrapper">
-            <h3>{topic.TitleEn}</h3>
-            <p>{topic.TopicContent}</p>
-            {topic?.Questions?.map((question: any, questionIndex: number) => (
-              <div key={questionIndex} className="write-about-wrapper mt-10">
-                <div className="img-wrapper">
-                  {question.File && (
-                    <img src={question.File} alt="Question related visual" />
+          <div key={topicIndex} className="topic-wrapper mt-7">
+            <h3 className="mb-1 text-[#785ABE] font-semibold text-xl">
+              {topic.TitleEn}
+            </h3>
+
+            <div className="border-solid border-2 border-[#9a7ed9] mb-16 p-10 rounded-[10px]">
+              <p className="text-center">{topic.TopicContent}</p>
+              {topic?.File ? (
+                <img
+                  className="w-full h-96 object-contain"
+                  src={`https://sah-platform-api-egghayfcc4ddeuae.canadacentral-01.azurewebsites.net/${topic.File}`}
+                  alt="Topic Image"
+                />
+              ) : (
+                <div className="flex items-center justify-center">
+                  {/* <span>No Image</span> */}
+                </div>
+              )}
+
+              {topic?.Questions?.map((question: any, questionIndex: number) => (
+                <div key={questionIndex} className="write-about-wrapper mt-10">
+                  <div className="img-wrapper">
+                    {question.File && (
+                      <img src={question.File} alt="Question related visual" />
+                    )}
+                  </div>
+                  <p className="about-title text-center">
+                    {question.ContentQuestion}
+                  </p>
+                  {selectTypeQuestion === 2 ? (
+                    <FileUploader
+                      onFileChange={(files) =>
+                        handleFileChange(files, topicIndex, questionIndex)
+                      }
+                    />
+                  ) : (
+                    <div className="writing-area-container">
+                      <textarea
+                        className="writing-area"
+                        value={text[`${topicIndex}-${questionIndex}`] || ""}
+                        onChange={(event) =>
+                          handleTextChange(event, topicIndex, questionIndex)
+                        }
+                        maxLength={200}
+                      />
+                      <div
+                        className={`count ${
+                          (text[`${topicIndex}-${questionIndex}`] || "")
+                            .length >= 180
+                            ? "warning"
+                            : ""
+                        }`}
+                      >
+                        {(text[`${topicIndex}-${questionIndex}`] || "").length}{" "}
+                        / 200
+                      </div>
+                    </div>
                   )}
                 </div>
-                <p className="about-title">{question.ContentQuestion}</p>
-                {selectTypeQuestion === 2 ? (
-                  <FileUploader
-                    onFileChange={(files) =>
-                      handleFileChange(files, topicIndex, questionIndex)
-                    }
-                  />
-                ) : (
-                  <div className="writing-area-container">
-                    <textarea
-                      className="writing-area"
-                      value={text[`${topicIndex}-${questionIndex}`] || ""}
-                      onChange={(event) =>
-                        handleTextChange(event, topicIndex, questionIndex)
-                      }
-                      maxLength={200}
-                    />
-                    <div
-                      className={`count ${
-                        (text[`${topicIndex}-${questionIndex}`] || "").length >=
-                        180
-                          ? "warning"
-                          : ""
-                      }`}
-                    >
-                      {(text[`${topicIndex}-${questionIndex}`] || "").length} /
-                      200
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         ))}
         <div className="submit-and-move">
