@@ -19,6 +19,9 @@ apiInstance.interceptors.request.use(
       // Add Authorization header to the request
       config.headers.Authorization = `Bearer ${token}`;
     }
+    if (config.url?.includes("Student/SubmitStudentAnswerModelExam")) {
+      config.headers["Content-Type"] = "multipart/form-data";
+    }
     return config;
   },
   (error) => {

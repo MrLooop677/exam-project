@@ -1,128 +1,244 @@
-import React, { ChangeEvent, useState } from "react";
+import React, { ChangeEvent, useEffect, useState } from "react";
 import Header from "../../layout/header";
 import Footer from "../../layout/footer";
+import { useParams } from "react-router-dom";
+import { getAllQuestionsReading, submitExamData } from "../../api/adminApis";
+import FileUploader from "./upload-file";
 
 const WritingQuestions: React.FC = () => {
-  const [draggedWord, setDraggedWord] = useState<string | null>(null);
-  const [placedWords, setPlacedWords] = useState<(string | null)[]>([
-    null,
-    null,
-    null,
-  ]);
-
-  const words_1 = ["Word1", "Word2", "Word3"];
-
-  const handleDragStart = (word: string) => {
-    setDraggedWord(word);
-  };
-
-  const handleDrop = (index: number) => {
-    if (draggedWord) {
-      const updatedPlacedWords = [...placedWords];
-
-      if (index === -1) {
-        // If dropped in the top section, remove the word from all boxes
-        for (let i = 0; i < updatedPlacedWords.length; i++) {
-          if (updatedPlacedWords[i] === draggedWord) {
-            updatedPlacedWords[i] = null;
-          }
-        }
-      } else {
-        // If dropped in a specific box, first remove it from any other box
-        for (let i = 0; i < updatedPlacedWords.length; i++) {
-          if (updatedPlacedWords[i] === draggedWord) {
-            updatedPlacedWords[i] = null;
-          }
-        }
-        updatedPlacedWords[index] = draggedWord;
-      }
-
-      setPlacedWords(updatedPlacedWords);
-      setDraggedWord(null); // Reset dragged word
-    }
-  };
-
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  };
-  // States for "Arrange Words" section
-  const [words, setWords] = useState(["Word1", "Word2", "Word3"]);
-  const [slots, setSlots] = useState(Array(3).fill(null)); // Initialize empty slots for placement
-  const [usedWords, setUsedWords] = useState<string[]>([]); // Track words that have been used
-
-  const handleWordDragStart = (
-    event: React.DragEvent<HTMLDivElement>,
-    word: string
-  ) => {
-    event.dataTransfer.setData("text/plain", word);
-    event.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleSlotDrop = (
-    event: React.DragEvent<HTMLDivElement>,
-    index: number
-  ) => {
-    event.preventDefault();
-    const word = event.dataTransfer.getData("text");
-
-    // Clone the slots and usedWords arrays to modify
-    const newSlots = [...slots];
-    const newUsedWords = new Set(usedWords);
-
-    // If the target slot is already occupied, return the replaced word to the top list
-    const replacedWord = newSlots[index];
-    if (replacedWord) {
-      newUsedWords.delete(replacedWord); // Remove replaced word from usedWords
-    }
-
-    // Remove the dragged word from any previous slot if it exists
-    const previousIndex = newSlots.findIndex((slotWord) => slotWord === word);
-    if (previousIndex !== -1) {
-      newSlots[previousIndex] = null;
-    }
-
-    // Place the word in the new slot
-    newSlots[index] = word;
-    newUsedWords.add(word);
-
-    // Update the state
-    setSlots(newSlots);
-    setUsedWords(Array.from(newUsedWords));
-
-    // Add the replaced word back to the top list if it was in a slot
-    if (replacedWord && !words.includes(replacedWord)) {
-      setWords((prevWords) => [...prevWords, replacedWord]);
-    }
-  };
-
-  const handleListDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const word = event.dataTransfer.getData("text");
-
-    // Clear the word from any slot it's currently in
-    const newSlots = slots.map((slot) => (slot === word ? null : slot));
-
-    // Remove the word from usedWords to make it draggable again
-    const newUsedWords = usedWords.filter((w) => w !== word);
-
-    // Ensure the word is in the top list if it’s removed from the slot
-    if (!words.includes(word)) {
-      setWords((prevWords) => [...prevWords, word]);
-    }
-
-    setSlots(newSlots);
-    setUsedWords(newUsedWords);
-  };
-
-  const allowDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  };
-
+  const { examId } = useParams();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [readingQuestions, setReadingQuestions] = useState<any>(null);
+  const [fileUploads, setFileUploads] = useState<File[]>([]); // New state to store uploaded files
   const [text, setText] = useState<string>("");
 
-  const handleTextChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {
-    setText(event.target.value);
+  const [selectTypeQuestion, setSelectTypeQuestion] = useState<number | null>(
+    1
+  );
+
+  // Handle the file changes from FileUploader
+  const handleFileChange = (
+    files: File[],
+    topicIndex: number,
+    questionIndex: number
+  ) => {
+    const key = `${topicIndex}-${questionIndex}`;
+    setFileUploads((prev) => ({
+      ...prev,
+      [key]: files,
+    }));
   };
+  const handleTextChange = (
+    event: ChangeEvent<HTMLTextAreaElement>,
+    topicIndex: number,
+    questionIndex: number
+  ): void => {
+    const key = `${topicIndex}-${questionIndex}`;
+    setText((prev) => ({ ...prev, [key]: event.target.value }));
+  };
+  const handleSubmit = async () => {
+    if (!readingQuestions) return;
+
+    // Create a FormData instance
+    const formData = new FormData();
+
+    // Align with the first request structure
+    formData.append("SubjectId", readingQuestions.SubjectId || "");
+    formData.append("Round", "0");
+    formData.append("DegreeStudent", "0");
+    formData.append("SchoolId", "");
+    formData.append("DegreeModelEx", "0");
+    formData.append("ExamStatus", "0");
+    formData.append("Skill", readingQuestions.Skill?.toString() || "0");
+    formData.append("GradeId", readingQuestions.GradeId || "");
+    formData.append("NameEn", readingQuestions.NameEn || "");
+    formData.append("NumberOfMandatoryQuestions", "0");
+    formData.append("StudentId", "");
+    formData.append("ModelExId", readingQuestions.Id || "");
+    formData.append("ExamId", examId || "");
+    formData.append("Id", "");
+    formData.append("NameAr", readingQuestions.NameAr || "");
+    formData.append("AcademicYearId", "");
+    formData.append("LevelId", readingQuestions.LevelId || "");
+
+    // Add Topics and Questions in the correct structure
+    readingQuestions.Topics.forEach((topic: any, topicIndex: number) => {
+      formData.append(
+        `StudentTopics[${topicIndex}].TitleAr`,
+        topic.TitleAr || ""
+      );
+      formData.append(
+        `StudentTopics[${topicIndex}].TitleEn`,
+        topic.TitleEn || ""
+      );
+      formData.append(`StudentTopics[${topicIndex}].File`, topic.File || "");
+      formData.append(
+        `StudentTopics[${topicIndex}].TopicContent`,
+        topic.TopicContent || ""
+      );
+      formData.append(
+        `StudentTopics[${topicIndex}].StudentModelExamId`,
+        topic.StudentModelExamId || ""
+      );
+
+      // Add nested Questions
+      topic.Questions.forEach((question: any, questionIndex: number) => {
+        const baseKey = `StudentTopics[${topicIndex}].StudentQuestions[${questionIndex}]`;
+        const key = `${topicIndex}-${questionIndex}`; // Key for text mapping
+
+        formData.append(
+          `${baseKey}.QuestionType`,
+          selectTypeQuestion?.toString() || "0"
+        );
+        // formData.append(`${baseKey}.AnswerFile`, question.File || "");
+        formData.append(
+          `${baseKey}.ParentQuestionId`,
+          question.ParentQuestionId || ""
+        );
+        formData.append(
+          `${baseKey}.DisplayOrder`,
+          question.DisplayOrder?.toString() || "0"
+        );
+        formData.append(`${baseKey}.FreeWritingAnswer`, text[key] || "");
+        formData.append(
+          `${baseKey}.StudentTopicId`,
+          question.StudentTopicId || ""
+        );
+        formData.append(
+          `${baseKey}.DegreeStudent`,
+          question.DegreeStudent?.toString() || "0"
+        );
+        formData.append(
+          `${baseKey}.DegreeQuestion`,
+          question.DegreeQuestion?.toString() || "0"
+        );
+        formData.append(
+          `${baseKey}.AnswerType`,
+          question.AnswerType?.toString() || "0"
+        );
+        formData.append(`${baseKey}.AnswerFile`, ""); // Empty if no file
+        formData.append(
+          `${baseKey}.ContentQuestion`,
+          question.ContentQuestion || ""
+        );
+        const uploadedFiles = fileUploads[`${topicIndex}-${questionIndex}`];
+        if (uploadedFiles && uploadedFiles.length > 0) {
+          Array.from(uploadedFiles)?.forEach((file, index) => {
+            formData.append(`${baseKey}.AnswerFile[${index}]`, file);
+          });
+        }
+      });
+    });
+
+    // // Append the uploaded files to formData
+    // fileUploads?.forEach((file, index) => {
+    //   formData.append(`FileUpload[${index}]`, file);
+    // });
+    try {
+      const response = await submitExamData(formData);
+      alert("Successfully submitted exam data");
+      console.log("Submission successful", response);
+    } catch (err: any) {
+      console.error("Error submitting exam data:", err);
+    }
+  };
+
+  // const handleSubmit = async () => {
+  //   if (!readingQuestions) return;
+
+  //   // Create a FormData instance
+  //   const formData = new FormData();
+
+  //   // Append top-level fields
+  //   formData.append("SubjectId", readingQuestions.SubjectId || "");
+  //   formData.append("Round", "0");
+  //   formData.append("DegreeStudent", "0");
+  //   formData.append("SchoolId", "");
+  //   formData.append("DegreeModelEx", "0");
+  //   formData.append("ExamStatus", "0");
+  //   formData.append("Skill", readingQuestions.Skill?.toString() || "0");
+  //   formData.append("GradeId", readingQuestions.GradeId || "");
+  //   formData.append("NameEn", readingQuestions.NameEn || "");
+  //   formData.append("NumberOfMandatoryQuestions", "0");
+  //   formData.append("StudentId", "");
+  //   formData.append("ModelExId", readingQuestions.Id || "");
+  //   formData.append("ExamId", examId || "");
+  //   formData.append("Id", "");
+  //   formData.append("NameAr", readingQuestions.NameAr || "");
+  //   formData.append("AcademicYearId", "");
+  //   formData.append("LevelId", readingQuestions.LevelId || "");
+
+  //   // Append StudentTopics array
+  //   readingQuestions.Topics.forEach((topic: any, topicIndex: number) => {
+  //     formData.append(
+  //       `StudentTopics[${topicIndex}].TitleAr`,
+  //       topic.TitleAr || ""
+  //     );
+  //     formData.append(
+  //       `StudentTopics[${topicIndex}].TitleEn`,
+  //       topic.TitleEn || ""
+  //     );
+  //     formData.append(`StudentTopics[${topicIndex}].File`, topic.File || "");
+  //     formData.append(
+  //       `StudentTopics[${topicIndex}].TopicContent`,
+  //       topic.TopicContent || ""
+  //     );
+  //     formData.append(`StudentTopics[${topicIndex}].StudentModelExamId`, "");
+
+  //     // Append StudentQuestions array inside each StudentTopic
+  //     topic.Questions.forEach((question: any, questionIndex: number) => {
+  //       const baseKey = `StudentTopics[${topicIndex}].StudentQuestions[${questionIndex}]`;
+  //       const key = `${topicIndex}-${questionIndex}`;
+
+  //       formData.append(
+  //         `${baseKey}.QuestionType`,
+  //         selectTypeQuestion?.toString() || "0"
+  //       );
+  //       formData.append(`${baseKey}.FileQuestion`, question.File || "");
+  //       formData.append(
+  //         `${baseKey}.ParentQuestionId`,
+  //         question.ParentQuestionId || ""
+  //       );
+  //       formData.append(`${baseKey}.DisplayOrder`, "0");
+  //       formData.append(`${baseKey}.FreeWritingAnswer`, text[key] || "");
+  //       formData.append(`${baseKey}.StudentTopicId`, "");
+  //       formData.append(`${baseKey}.DegreeStudent`, "0");
+  //       formData.append(`${baseKey}.DegreeQuestion`, "0");
+  //       formData.append(`${baseKey}.AnswerType`, "0");
+  //       formData.append(`${baseKey}.AnswerFile`, "");
+  //       formData.append(
+  //         `${baseKey}.ContentQuestion`,
+  //         question.ContentQuestion || ""
+  //       );
+  //     });
+  //   });
+
+  //   try {
+  //     const response = await submitExamData(formData);
+  //     alert("Successfully submitted modal exam");
+  //     console.log("Submission successful", response);
+  //   } catch (err: any) {
+  //     console.error("Error submitting exam data:", err);
+  //   }
+  // };
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      try {
+        const availabilityData = await getAllQuestionsReading(examId);
+        setReadingQuestions(availabilityData?.Data);
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch reading questions");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAvailability();
+  }, [examId]);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <div className="mt-5">
@@ -132,18 +248,18 @@ const WritingQuestions: React.FC = () => {
           <div className="left-side">
             <img src="/assets/home/highlight.svg" alt="" />
             <div className="main-points">
-              <p className="title">Reading</p>
+              <p className="title">Writing</p>
               <ul className="points">
                 <li>
-                  Lorem Ipsum is simply dummy text of the printing and
+                  Lorem Ipsum is simply dummy text of the printing and
                   typesetting industry.
                 </li>
                 <li>
-                  Lorem Ipsum is simply dummy text of the printing and
+                  Lorem Ipsum is simply dummy text of the printing and
                   typesetting industry.
                 </li>
                 <li>
-                  Lorem Ipsum is simply dummy text of the printing and
+                  Lorem Ipsum is simply dummy text of the printing and
                   typesetting industry.
                 </li>
               </ul>
@@ -156,11 +272,19 @@ const WritingQuestions: React.FC = () => {
               </div>
             </div>
             <div className="extra-writing-instruction">
-              <div className="instruction-item">
+              <div
+                className="instruction-item"
+                onClick={() => setSelectTypeQuestion(1)}
+                style={{ cursor: "pointer" }}
+              >
                 <img src="/assets/exams/keyboard.svg" alt="" />
                 <p className="keyboard">Write with Keyboard</p>
               </div>
-              <div className="instruction-item">
+              <div
+                className="instruction-item"
+                onClick={() => setSelectTypeQuestion(2)}
+                style={{ cursor: "pointer" }}
+              >
                 <img src="/assets/exams/write.svg" alt="" />
                 <p>Hand writing</p>
               </div>
@@ -170,238 +294,56 @@ const WritingQuestions: React.FC = () => {
         <div className="reading-timer">
           <img src="/assets/home/timer.svg" alt="" />
         </div>
-        <div className="reading-comprehension">
-          <p className="comprehension-title">Reading Comprehension 1</p>
-          <div className="comprehension-questions">
-            <p className="question-title">Question Title</p>
-            <div className="comprehension-paragraph">
-              <p>
-                Lorem Ipsum is simply dummy text of the printing and typesetting
-                industry. Lorem Ipsum has been the industry's standard dummy
-                text ever since the 1500s, when an unknown printer took a galley
-                of type and scrambled it to make a type specimen book. It has
-                survived not only five centuries, but also the leap into
-                electronic typesetting, remaining essentially unchanged. 
-              </p>
-              <p>
-                Lorem Ipsum is simply dummy text of the printing and typesetting
-                industry. Lorem Ipsum has been the industry's standard dummy
-                text ever since the 1500s, when an unknown printer took a galley
-                of type and scrambled it to make a type specimen book. It has
-                survived not only five centuries, but also the leap into
-                electronic typesetting, remaining essentially unchanged. 
-              </p>
-            </div>
-            <div className="choose-the-correct-answer">
-              <p className="section-title">
-                <span className="question-num">1</span>
-                choose the correct answer
-              </p>
-              <div className="choose-questions">
-                <div className="question-item">
-                  <p className="question">
-                    <span className="question-letter">A</span>Question Title
-                  </p>
-                  <div className="answers">
-                    <label>
-                      <input type="radio" name="Q1" value="answer1" />
-                      answer 1
-                    </label>
-                    <label>
-                      <input type="radio" name="Q1" value="answer2" />
-                      answer 2
-                    </label>
-                    <label>
-                      <input type="radio" name="Q1" value="answer3" />
-                      answer 3
-                    </label>
-                  </div>
+        {readingQuestions?.Topics?.map((topic: any, topicIndex: number) => (
+          <div key={topicIndex} className="topic-wrapper">
+            <h3>{topic.TitleEn}</h3>
+            <p>{topic.TopicContent}</p>
+            {topic?.Questions?.map((question: any, questionIndex: number) => (
+              <div key={questionIndex} className="write-about-wrapper mt-10">
+                <div className="img-wrapper">
+                  {question.File && (
+                    <img src={question.File} alt="Question related visual" />
+                  )}
                 </div>
-                <div className="question-item">
-                  <p className="question">
-                    <span className="question-letter">B</span>Question Title
-                  </p>
-                  <div className="answers">
-                    <label>
-                      <input type="radio" name="Q2" value="answer1" />
-                      answer 1
-                    </label>
-                    <label>
-                      <input type="radio" name="Q2" value="answer2" />
-                      answer 2
-                    </label>
-                    <label>
-                      <input type="radio" name="Q2" value="answer3" />
-                      answer 3
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="true-or-false">
-              <p className="section-title">
-                <span className="question-num">2</span>True or false ?
-              </p>
-              <div className="true-or-false-question">
-                <p className="question">
-                  Lorem Ipsum is simply dummy text of the printing and
-                  typesetting industry. Lorem Ipsum has been the industry's
-                  standard dummy text ever since the 1500s, when an unknown
-                  printer took a galley of type and scrambled it to make a type
-                  specimen book. It has survived not only five centuries, but
-                  also the leap into electronic typesetting, remaining
-                  essentially unchanged. 
-                </p>
-                <div className="true-or-false-answer">
-                  <label className="true">
-                    <input type="radio" name="trueOrFalse" value="true" />
-                    True
-                  </label>
-                  <label className="false">
-                    <input type="radio" name="trueOrFalse" value="false" />
-                    False
-                  </label>
-                </div>
-              </div>
-            </div>
-            <div className="put-in-right-place">
-              <p className="section-title">
-                {" "}
-                <span className="question-num">3</span>Put words in right places
-              </p>
-              <div className="put-in-right-place-questions">
-                <div
-                  className="words-to-choose"
-                  onDrop={() => handleDrop(-1)} // Drop back to top
-                  onDragOver={handleDragOver}
-                >
-                  {words_1.map((word, index) => {
-                    const isUsed = placedWords.includes(word); // Check if word is in a box
-                    return (
-                      <div
-                        key={index}
-                        className={`word ${isUsed ? "used-word" : ""}`} // Apply "used-word" class if placed
-                        draggable={!isUsed} // Disable dragging if placed in a box
-                        onDragStart={() => handleDragStart(word)}
-                      >
-                        {word}
-                      </div>
-                    );
-                  })}
-                </div>
-                {placedWords.map((word, index) => (
-                  <div className="words-description" key={index}>
-                    <p className="description">
-                      Lorem Ipsum is simply dummy text of the printing and
-                      typesetting industry.
-                    </p>
+                <p className="about-title">{question.ContentQuestion}</p>
+                {selectTypeQuestion === 2 ? (
+                  <FileUploader
+                    onFileChange={(files) =>
+                      handleFileChange(files, topicIndex, questionIndex)
+                    }
+                  />
+                ) : (
+                  <div className="writing-area-container">
+                    <textarea
+                      className="writing-area"
+                      value={text[`${topicIndex}-${questionIndex}`] || ""}
+                      onChange={(event) =>
+                        handleTextChange(event, topicIndex, questionIndex)
+                      }
+                      maxLength={200}
+                    />
                     <div
-                      className="drag-box"
-                      onDrop={() => handleDrop(index)}
-                      onDragOver={handleDragOver}
-                      draggable={!!word} // Allow dragging from box if there's a word
-                      onDragStart={() => handleDragStart(word as string)}
-                    >
-                      {word || ""}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="arrange-words">
-              <p className="section-title">
-                {" "}
-                <span className="question-num">4</span>Drag and Drop to Arrange
-                Words
-              </p>
-              <div className="arrange-words-question">
-                <div
-                  className="words-to-arrange"
-                  onDrop={handleListDrop}
-                  onDragOver={allowDrop}
-                >
-                  {words.map((word) => (
-                    <p
-                      key={word}
-                      className={`word ${
-                        usedWords.includes(word) ? "used-word" : ""
+                      className={`count ${
+                        (text[`${topicIndex}-${questionIndex}`] || "").length >=
+                        180
+                          ? "warning"
+                          : ""
                       }`}
-                      draggable
-                      onDragStart={(event) => handleWordDragStart(event, word)}
                     >
-                      {word}
-                    </p>
-                  ))}
-                </div>
-
-                <div className="words-place">
-                  {slots.map((slot, index) => (
-                    <div
-                      key={index}
-                      className="gray-box-slot"
-                      onDrop={(event) => handleSlotDrop(event, index)}
-                      onDragOver={allowDrop}
-                    >
-                      {slot ? (
-                        <p
-                          className="word-in-slot"
-                          draggable
-                          onDragStart={(event) =>
-                            handleWordDragStart(event, slot)
-                          }
-                        >
-                          {slot}
-                        </p>
-                      ) : (
-                        ""
-                      )}
+                      {(text[`${topicIndex}-${questionIndex}`] || "").length} /
+                      200
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
-            </div>
+            ))}
           </div>
-        </div>
-        <div className="txt-area-question">
-          <p className="topic-num">Topic 3</p>
-          <div className="topic-question">
-            <p className="question-title">Question Title</p>
-            <p>
-              Lorem Ipsum is simply dummy text of the printing and typesetting
-              industry. Lorem Ipsum has been the industry's standard dummy text
-              ever since the 1500s, when an unknown printer took a galley of
-              type and scrambled it to make a type specimen book. It has
-              survived not only five centuries, but also the leap into
-              electronic typesetting, remaining essentially unchanged. 
-            </p>
-            <div className="answer-area">
-              <textarea className="answer-textarea"></textarea>
-            </div>
-          </div>
-        </div>
+        ))}
         <div className="submit-and-move">
           <div></div>
-          <button>Submit</button>
+          <button onClick={handleSubmit}>Submit</button>
           <div className="next-arrow">
             <img src="/assets/assessment/next-arrow.svg" alt="" />
-          </div>
-        </div>
-        <div className="write-about-wrapper">
-          <div className="img-wrapper">
-            <img src="/assets/exams/school.svg" alt="" />
-          </div>
-
-          <p className="about-title">Write About Your School</p>
-          <div className="writing-area-container">
-            <textarea
-              className="writing-area"
-              value={text}
-              onChange={handleTextChange}
-              maxLength={200}
-            />
-            <div className={`count ${text.length >= 180 ? "warning" : ""}`}>
-              {text.length} / 200
-            </div>
           </div>
         </div>
       </div>

@@ -3,17 +3,36 @@ import React, { useState, useEffect } from "react";
 import { AudioRecorder } from "react-audio-voice-recorder";
 import Footer from "../../layout/footer";
 import Header from "../../layout/header";
+import { useParams } from "react-router-dom";
+import { getAllQuestionsReading, submitExamData } from "../../api/adminApis";
+import { FiTrash2 } from "react-icons/fi";
 
 const SpeakingQuestions: React.FC = () => {
+  const [readingQuestions, setReadingQuestions] = useState<any>(null);
+  const [fileUploads, setFileUploads] = useState<File[]>([]); // New state to store uploaded files
+  const { examId } = useParams();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   // record voice
+
+  const [audioElements, setAudioElements] = useState<
+    { key: number; src: string }[]
+  >([]);
+  console.log("audioElements", audioElements);
+
   const addAudioElement = (blob: Blob) => {
     const url = URL.createObjectURL(blob);
-    const audio = document.createElement("audio");
-    audio.src = url;
-    audio.controls = true;
-    document.body.appendChild(audio);
-  };
 
+    // Create a unique key for each audio element
+    const audioKey = Date.now();
+
+    // Store audio `src` and its key in the state
+    setAudioElements((prev) => [...prev, { key: audioKey, src: url }]);
+  };
+  const deleteAudioElement = (key: number) => {
+    // Filter out the audio element to be deleted
+    setAudioElements((prev) => prev.filter((audio) => audio.key !== key));
+  };
   // timer
   const [timeLeft, setTimeLeft] = useState(10); // Initial countdown time in seconds
 
@@ -28,7 +47,125 @@ const SpeakingQuestions: React.FC = () => {
       alert("Time is up!"); // Show warning when timer ends
     }
   }, [timeLeft]);
+  const handleSubmit = async () => {
+    if (!readingQuestions) return;
 
+    // Create a FormData instance
+    const formData = new FormData();
+
+    // Align with the first request structure
+    formData.append("SubjectId", readingQuestions.SubjectId || "");
+    formData.append("Round", "0");
+    formData.append("DegreeStudent", "0");
+    formData.append("SchoolId", "");
+    formData.append("DegreeModelEx", "0");
+    formData.append("ExamStatus", "0");
+    formData.append("Skill", readingQuestions.Skill?.toString() || "0");
+    formData.append("GradeId", readingQuestions.GradeId || "");
+    formData.append("NameEn", readingQuestions.NameEn || "");
+    formData.append("NumberOfMandatoryQuestions", "0");
+    formData.append("StudentId", "");
+    formData.append("ModelExId", readingQuestions.Id || "");
+    formData.append("ExamId", examId || "");
+    formData.append("Id", "");
+    formData.append("NameAr", readingQuestions.NameAr || "");
+    formData.append("AcademicYearId", "");
+    formData.append("LevelId", readingQuestions.LevelId || "");
+
+    // Add Topics and Questions in the correct structure
+    readingQuestions.Topics.forEach((topic: any, topicIndex: number) => {
+      formData.append(
+        `StudentTopics[${topicIndex}].TitleAr`,
+        topic.TitleAr || ""
+      );
+      formData.append(
+        `StudentTopics[${topicIndex}].TitleEn`,
+        topic.TitleEn || ""
+      );
+      formData.append(`StudentTopics[${topicIndex}].File`, topic.File || "");
+      formData.append(
+        `StudentTopics[${topicIndex}].TopicContent`,
+        topic.TopicContent || ""
+      );
+      formData.append(
+        `StudentTopics[${topicIndex}].StudentModelExamId`,
+        topic.StudentModelExamId || ""
+      );
+
+      // Add nested Questions
+      topic.Questions.forEach((question: any, questionIndex: number) => {
+        const baseKey = `StudentTopics[${topicIndex}].StudentQuestions[${questionIndex}]`;
+        const key = `${topicIndex}-${questionIndex}`; // Key for text mapping
+
+        formData.append(
+          `${baseKey}.QuestionType`,
+          question?.QuestionType?.toString() || "0"
+        );
+        // formData.append(`${baseKey}.AnswerFile`, question.File || "");
+        formData.append(
+          `${baseKey}.ParentQuestionId`,
+          question.ParentQuestionId || ""
+        );
+        formData.append(
+          `${baseKey}.DisplayOrder`,
+          question.DisplayOrder?.toString() || "0"
+        );
+        formData.append(`${baseKey}.FreeWritingAnswer`, "");
+        formData.append(
+          `${baseKey}.StudentTopicId`,
+          question.StudentTopicId || ""
+        );
+        formData.append(
+          `${baseKey}.DegreeStudent`,
+          question.DegreeStudent?.toString() || "0"
+        );
+        formData.append(
+          `${baseKey}.DegreeQuestion`,
+          question.DegreeQuestion?.toString() || "0"
+        );
+        formData.append(
+          `${baseKey}.AnswerType`,
+          question.AnswerType?.toString() || "0"
+        );
+        formData.append(`${baseKey}.AnswerFile`, ""); // Empty if no file
+        formData.append(
+          `${baseKey}.ContentQuestion`,
+          question.ContentQuestion || ""
+        );
+        const uploadedFiles = fileUploads[`${topicIndex}-${questionIndex}`];
+        if (audioElements && audioElements.length > 0) {
+          Array.from(audioElements)?.forEach((file, index) => {
+            formData.append(`${baseKey}.AnswerFile[${index}]`, file);
+          });
+        }
+      });
+    });
+
+    try {
+      const response = await submitExamData(formData);
+      alert("Successfully submitted exam data");
+      console.log("Submission successful", response);
+    } catch (err: any) {
+      console.error("Error submitting exam data:", err);
+    }
+  };
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      try {
+        const availabilityData = await getAllQuestionsReading(examId);
+        setReadingQuestions(availabilityData?.Data);
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch reading questions");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAvailability();
+  }, [examId]);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
   return (
     <div className="mt-5">
       <Header />
@@ -92,29 +229,45 @@ const SpeakingQuestions: React.FC = () => {
                 audioTrackConstraints={{
                   noiseSuppression: true,
                   echoCancellation: true,
-                  // autoGainControl,
-                  // channelCount,
-                  // deviceId,
-                  // groupId,
-                  // sampleRate,
-                  // sampleSize,
                 }}
-                onNotAllowedOrFound={(err) => console.table(err)}
-                downloadOnSavePress={true}
+                downloadOnSavePress={false}
                 downloadFileExtension="webm"
                 mediaRecorderOptions={{
                   audioBitsPerSecond: 128000,
                 }}
-                // showVisualizer={true}
               />
               <br />
+              <div id="audio-container" className="audio-container">
+                {audioElements.length > 0 ? (
+                  audioElements.map(({ key, src }) => (
+                    <div
+                      key={key}
+                      className="audio-item"
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      <audio controls src={src}></audio>
+                      <FiTrash2
+                        onClick={() => deleteAudioElement(key)}
+                        className="delete-btn"
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <p>No audio recordings yet.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         <div className="submit-and-move">
           <div></div>
-          <button>Submit</button>
+          <button onClick={handleSubmit}>Submit</button>
           <div className="next-arrow">
             <img src="/assets/assessment/next-arrow.svg" alt="" />
           </div>

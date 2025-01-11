@@ -72,7 +72,7 @@ export const checkSkillsExamsAvailability = async (id) => {
 export const getAllQuestionsReading = async (id) => {
   try {
     const response = await apiInstance.get(
-      `/Student/GetStudentModelExam?Skill=1&ExamId=${id}`
+      `/Student/GetStudentModelExam?Skill=3&ExamId=${id}`
     );
 
     // Assuming the response data contains the availability information
