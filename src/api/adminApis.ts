@@ -83,6 +83,34 @@ export const getAllQuestionsReading = async (id, skillNumber) => {
       : new Error("Failed to check skills exams availability");
   }
 };
+export const getAllTopicsReading = async (id, skillNumber) => {
+  try {
+    const response = await apiInstance.get(
+      `/Student/GetStudentModelExam?Skill=${skillNumber}&ExamId=${id}`
+    );
+
+    // Assuming the response data contains the availability information
+    return response.data;
+  } catch (error: any) {
+    throw error.response
+      ? error.response.data
+      : new Error("Failed to check skills exams availability");
+  }
+};
+export const getAllQuestionsTopicReading = async (id) => {
+  try {
+    const response = await apiInstance.get(
+      `/Student/GetStudentTopicsQuestions?topicId=${id}`
+    );
+
+    // Assuming the response data contains the availability information
+    return response.data;
+  } catch (error: any) {
+    throw error.response
+      ? error.response.data
+      : new Error("Failed to check skills exams availability");
+  }
+};
 export const submitExamData = async (payload) => {
   try {
     const response = await apiInstance.post(

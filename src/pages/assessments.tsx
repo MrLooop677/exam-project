@@ -40,7 +40,8 @@ const Assessments: React.FC = () => {
     <>
       <div className="assessment-wrapper h-[100vh]">
         <Header leftChildren={<p>Available Assessments</p>} />
-        <div className="assessment-grid">
+        {/* <div className="assessment-grid" className="grid grid-cols-12 gap-4"> */}
+        <div className="assessment-grid grid grid-cols-12 gap-4">
           {loading && <p>Loading assessments...</p>}
           {error && <p>Error: {error}</p>}
           {!loading && !error && exams.length === 0 && (
@@ -50,7 +51,7 @@ const Assessments: React.FC = () => {
             !error &&
             exams.length > 0 &&
             exams.map((exam, index) => (
-              <div key={index} className="assessment-item">
+              <div key={index} className="assessment-item col-span-12 md:col-span-3">
                 <div className="img-wrapper">
                   <img
                     src={

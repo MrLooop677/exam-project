@@ -548,13 +548,13 @@
   margin: 58px 45px 30px 45px;
 
   .assessment-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(238px, 1fr));
-    gap: 20px;
-    padding: 0 45px;
+    // display: grid;
+    // grid-template-columns: repeat(auto-fit, minmax(238px, 1fr));
+    // gap: 20px;
+    // padding: 0 45px;
 
     .assessment-item {
-      max-width: 273px;
+      // max-width: 273px;
       border-top-right-radius: 50px;
       border-top-left-radius: 50px;
       box-shadow: 0px 1px 14px 0px #ebebeb;

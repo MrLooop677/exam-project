@@ -5,7 +5,6 @@ import { useParams } from "react-router-dom";
 import { getAllQuestionsReading, submitExamData } from "../../api/adminApis";
 import FileUploader from "./upload-file";
 import { toast } from "react-toastify";
-import Swal from 'sweetalert2';
 
 const WritingQuestions: React.FC = () => {
   const { examId } = useParams();
@@ -32,7 +31,6 @@ const WritingQuestions: React.FC = () => {
       [key]: files,
     }));
   };
-
   const handleTextChange = (
     event: ChangeEvent<HTMLTextAreaElement>,
     topicIndex: number,
@@ -41,36 +39,8 @@ const WritingQuestions: React.FC = () => {
     const key = `${topicIndex}-${questionIndex}`;
     setText((prev) => ({ ...prev, [key]: event.target.value }));
   };
-
   const handleSubmit = async () => {
     if (!readingQuestions) return;
-
-    // Check if no answers are provided (either text or file)
-    let hasAnswer = false;
-
-    readingQuestions.Topics.forEach((topic: any, topicIndex: number) => {
-      topic.Questions.forEach((question: any, questionIndex: number) => {
-        const key = `${topicIndex}-${questionIndex}`;
-        const answerText = text[key] || "";
-        const uploadedFiles = fileUploads[`${topicIndex}-${questionIndex}`];
-
-        // If there is either a non-empty answer or uploaded file, set hasAnswer to true
-        if (answerText.trim() !== "" || (uploadedFiles && uploadedFiles.length > 0)) {
-          hasAnswer = true;
-        }
-      });
-    });
-
-    if (!hasAnswer) {
-      // Show SweetAlert warning if no answers are provided
-      Swal.fire({
-        title: "Warning",
-        text: "You haven't answered any questions yet. Please provide your responses before submitting.",
-        icon: "warning",
-        confirmButtonText: "OK",
-      });
-      return;
-    }
 
     // Create a FormData instance
     const formData = new FormData();
@@ -123,6 +93,7 @@ const WritingQuestions: React.FC = () => {
           `${baseKey}.QuestionType`,
           selectTypeQuestion?.toString() || "0"
         );
+        // formData.append(`${baseKey}.AnswerFile`, question.File || "");
         formData.append(
           `${baseKey}.ParentQuestionId`,
           question.ParentQuestionId || ""
@@ -162,8 +133,13 @@ const WritingQuestions: React.FC = () => {
       });
     });
 
+    // // Append the uploaded files to formData
+    // fileUploads?.forEach((file, index) => {
+    //   formData.append(`FileUpload[${index}]`, file);
+    // });
     try {
       const response = await submitExamData(formData);
+      //alert("Successfully submitted exam data");
       toast.success("Successfully submitted exam data");
       console.log("Submission successful", response);
     } catch (err: any) {
@@ -171,6 +147,84 @@ const WritingQuestions: React.FC = () => {
     }
   };
 
+  // const handleSubmit = async () => {
+  //   if (!readingQuestions) return;
+
+  //   // Create a FormData instance
+  //   const formData = new FormData();
+
+  //   // Append top-level fields
+  //   formData.append("SubjectId", readingQuestions.SubjectId || "");
+  //   formData.append("Round", "0");
+  //   formData.append("DegreeStudent", "0");
+  //   formData.append("SchoolId", "");
+  //   formData.append("DegreeModelEx", "0");
+  //   formData.append("ExamStatus", "0");
+  //   formData.append("Skill", readingQuestions.Skill?.toString() || "0");
+  //   formData.append("GradeId", readingQuestions.GradeId || "");
+  //   formData.append("NameEn", readingQuestions.NameEn || "");
+  //   formData.append("NumberOfMandatoryQuestions", "0");
+  //   formData.append("StudentId", "");
+  //   formData.append("ModelExId", readingQuestions.Id || "");
+  //   formData.append("ExamId", examId || "");
+  //   formData.append("Id", "");
+  //   formData.append("NameAr", readingQuestions.NameAr || "");
+  //   formData.append("AcademicYearId", "");
+  //   formData.append("LevelId", readingQuestions.LevelId || "");
+
+  //   // Append StudentTopics array
+  //   readingQuestions.Topics.forEach((topic: any, topicIndex: number) => {
+  //     formData.append(
+  //       `StudentTopics[${topicIndex}].TitleAr`,
+  //       topic.TitleAr || ""
+  //     );
+  //     formData.append(
+  //       `StudentTopics[${topicIndex}].TitleEn`,
+  //       topic.TitleEn || ""
+  //     );
+  //     formData.append(`StudentTopics[${topicIndex}].File`, topic.File || "");
+  //     formData.append(
+  //       `StudentTopics[${topicIndex}].TopicContent`,
+  //       topic.TopicContent || ""
+  //     );
+  //     formData.append(`StudentTopics[${topicIndex}].StudentModelExamId`, "");
+
+  //     // Append StudentQuestions array inside each StudentTopic
+  //     topic.Questions.forEach((question: any, questionIndex: number) => {
+  //       const baseKey = `StudentTopics[${topicIndex}].StudentQuestions[${questionIndex}]`;
+  //       const key = `${topicIndex}-${questionIndex}`;
+
+  //       formData.append(
+  //         `${baseKey}.QuestionType`,
+  //         selectTypeQuestion?.toString() || "0"
+  //       );
+  //       formData.append(`${baseKey}.FileQuestion`, question.File || "");
+  //       formData.append(
+  //         `${baseKey}.ParentQuestionId`,
+  //         question.ParentQuestionId || ""
+  //       );
+  //       formData.append(`${baseKey}.DisplayOrder`, "0");
+  //       formData.append(`${baseKey}.FreeWritingAnswer`, text[key] || "");
+  //       formData.append(`${baseKey}.StudentTopicId`, "");
+  //       formData.append(`${baseKey}.DegreeStudent`, "0");
+  //       formData.append(`${baseKey}.DegreeQuestion`, "0");
+  //       formData.append(`${baseKey}.AnswerType`, "0");
+  //       formData.append(`${baseKey}.AnswerFile`, "");
+  //       formData.append(
+  //         `${baseKey}.ContentQuestion`,
+  //         question.ContentQuestion || ""
+  //       );
+  //     });
+  //   });
+
+  //   try {
+  //     const response = await submitExamData(formData);
+  //     alert("Successfully submitted modal exam");
+  //     console.log("Submission successful", response);
+  //   } catch (err: any) {
+  //     console.error("Error submitting exam data:", err);
+  //   }
+  // };
   useEffect(() => {
     const fetchAvailability = async () => {
       try {

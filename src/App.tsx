@@ -12,23 +12,31 @@ import ReadingQuestions from "./pages/questions/reading/reading-questions";
 import WritingQuestions from "./pages/questions/writing/writing-questions";
 import { StudentFilePage } from "./pages/school-admin-view";
 
+//toastify
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 const App = () => {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/exams" element={<Exams />} />
-        <Route path="/login" element={<StudentLogin />} />
-        <Route path="/students-files" element={<StudentFilePage />} />
-        <Route path="/assessments" element={<Assessments />} />
-        <Route path="/details/:examId" element={<AssessmentsDetails />} />
-        <Route path="/pre-login" element={<PreLogin />} />
-        <Route path="/questions/:examId" element={<Questions />} />
-        <Route path="/reading-questions" element={<ReadingQuestions />} />
-        <Route path="/writing-questions" element={<WritingQuestions />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Router>
+    <>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/exams" element={<Exams />} />
+          <Route path="/login" element={<StudentLogin />} />
+          <Route path="/students-files" element={<StudentFilePage />} />
+          <Route path="/assessments" element={<Assessments />} />
+          <Route path="/details/:examId" element={<AssessmentsDetails />} />
+          <Route path="/pre-login" element={<PreLogin />} />
+          <Route path="/questions/:examId" element={<Questions />} />
+          <Route path="/reading-questions" element={<ReadingQuestions />} />
+          <Route path="/writing-questions" element={<WritingQuestions />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Router>
+
+      <ToastContainer />
+    </>
   );
 };
 

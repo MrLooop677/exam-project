@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
-
 import { AudioRecorder } from "react-audio-voice-recorder";
 import Footer from "../../layout/footer";
 import Header from "../../layout/header";
 import { useParams } from "react-router-dom";
 import { getAllQuestionsReading, submitExamData } from "../../api/adminApis";
 import { FiTrash2 } from "react-icons/fi";
+import ExamTimer from "../shared/exam-timer/exam-timer";
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
+import { toast } from "react-toastify";
 
 const SpeakingQuestions: React.FC = () => {
   const [readingQuestions, setReadingQuestions] = useState<any>(null);
@@ -13,8 +16,10 @@ const SpeakingQuestions: React.FC = () => {
   const { examId } = useParams();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  // record voice
+  const [timeLeft, setTimeLeft] = useState<number>(0); // Initialize timeLeft state
+  const MySwal = withReactContent(Swal);
 
+  // record voice
   const [audioElements, setAudioElements] = useState<
     { key: number; src: string }[][]
   >([]);
@@ -62,27 +67,69 @@ const SpeakingQuestions: React.FC = () => {
       return newAudioElements;
     });
   };
-  // timer
-  const [timeLeft, setTimeLeft] = useState(10); // Initial countdown time in seconds
 
-  // useEffect(() => {
-  //   if (timeLeft > 0) {
-  //     const timer = setInterval(() => {
-  //       setTimeLeft((prevTime) => prevTime - 1);
-  //     }, 1000);
+  const handleTimeUp = () => {
+    // Open SweetAlert modal when the time is up
+    MySwal.fire({
+      title: "Time is up!",
+      text: "Please submit your answers now.",
+      icon: "warning",
+      showConfirmButton: false, // Disable the confirm button
+      timer: 10000, // Set a timer for 10 seconds
+      allowOutsideClick: false, // Disable closing by clicking outside
+      willClose: () => {
+        // Handle what happens when SweetAlert closes
+      },
+    });
+  };
 
-  //     return () => clearInterval(timer); // Cleanup on component unmount or when timeLeft changes
-  //   } else {
-  //     alert("Time is up!"); // Show warning when timer ends
-  //   }
-  // }, [timeLeft]);
+  useEffect(() => {
+    if (readingQuestions && readingQuestions.TimerPerMinutes) {
+      const timerInSeconds = readingQuestions.TimerPerMinutes * 60;
+      // Check localStorage to see if there's a saved time left
+      const savedTime = localStorage.getItem("timerTimeLeft");
+      const initialTime = savedTime ? parseInt(savedTime) : timerInSeconds;
+      setTimeLeft(initialTime); // Set initial time for the timer
+    }
+  }, [readingQuestions]);
+
+  useEffect(() => {
+    // Save time left to localStorage when it changes
+    if (timeLeft >= 0) {  // Ensure the time is non-negative before saving
+      localStorage.setItem("timerTimeLeft", timeLeft.toString());
+    }
+  }, [timeLeft]);
+
   const handleSubmit = async () => {
     if (!readingQuestions) return;
+
+    // Check if any audio recordings have been made
+    let hasRecording = false;
+
+    readingQuestions.Topics.forEach((topic: any, topicIndex: number) => {
+      topic.Questions.forEach((question: any, questionIndex: number) => {
+        const audio = audioElements[topicIndex]?.[questionIndex];
+        if (audio && audio.length > 0) {
+          hasRecording = true;
+        }
+      });
+    });
+
+    if (!hasRecording) {
+      // Show SweetAlert warning if no audio recordings are found
+      Swal.fire({
+        title: "Warning",
+        text: "You haven't recorded any answers yet. Please record your responses before submitting.",
+        icon: "warning",
+        confirmButtonText: "OK",
+      });
+      return;
+    }
 
     // Create a FormData instance
     const formData = new FormData();
 
-    // Align with the first request structure
+    // Add all your form data logic here
     formData.append("SubjectId", readingQuestions.SubjectId || "");
     formData.append("Round", "0");
     formData.append("DegreeStudent", "0");
@@ -130,7 +177,6 @@ const SpeakingQuestions: React.FC = () => {
           `${baseKey}.QuestionType`,
           question?.QuestionType?.toString() || "0"
         );
-        // formData.append(`${baseKey}.AnswerFile`, question.File || "");
         formData.append(
           `${baseKey}.ParentQuestionId`,
           question.ParentQuestionId || ""
@@ -161,10 +207,12 @@ const SpeakingQuestions: React.FC = () => {
           `${baseKey}.ContentQuestion`,
           question.ContentQuestion || ""
         );
-        const uploadedFiles = fileUploads[`${topicIndex}-${questionIndex}`];
-        if (audioElements && audioElements.length > 0) {
-          Array.from(audioElements)?.forEach((file, index) => {
-            formData.append(`${baseKey}.AnswerFile[${index}]`, file);
+
+        // Add the audio files if available
+        const audio = audioElements[topicIndex]?.[questionIndex];
+        if (audio && audio.length > 0) {
+          audio.forEach(({ key, src }) => {
+            formData.append(`${baseKey}.AnswerFile`, src);
           });
         }
       });
@@ -172,12 +220,13 @@ const SpeakingQuestions: React.FC = () => {
 
     try {
       const response = await submitExamData(formData);
-      alert("Successfully submitted exam data");
+      toast.success("Successfully submitted exam data");
       console.log("Submission successful", response);
     } catch (err: any) {
       console.error("Error submitting exam data:", err);
     }
   };
+
   useEffect(() => {
     const fetchAvailability = async () => {
       try {
@@ -195,6 +244,7 @@ const SpeakingQuestions: React.FC = () => {
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
+
   return (
     <div className="mt-5">
       <Header />
@@ -205,18 +255,9 @@ const SpeakingQuestions: React.FC = () => {
             <div className="main-points">
               <p className="title">Speaking</p>
               <ul className="points">
-                <li>
-                  Lorem Ipsum is simply dummy text of the printing and
-                  typesetting industry.
-                </li>
-                <li>
-                  Lorem Ipsum is simply dummy text of the printing and
-                  typesetting industry.
-                </li>
-                <li>
-                  Lorem Ipsum is simply dummy text of the printing and
-                  typesetting industry.
-                </li>
+                <li>Lorem Ipsum is simply dummy text of the printing and typesetting industry.</li>
+                <li>Lorem Ipsum is simply dummy text of the printing and typesetting industry.</li>
+                <li>Lorem Ipsum is simply dummy text of the printing and typesetting industry.</li>
               </ul>
             </div>
           </div>
@@ -226,24 +267,18 @@ const SpeakingQuestions: React.FC = () => {
                 <img src="/assets/home/reading-a-book.svg" alt="" />
               </div>
             </div>
-            <div className="extra-writing-instruction">
-              <div className="instruction-item">
-                <img src="/assets/exams/keyboard.svg" alt="" />
-                <p className="keyboard">Write with Keyboard</p>
-              </div>
-              <div className="instruction-item">
-                <img src="/assets/exams/write.svg" alt="" />
-                <p>Hand writing</p>
-              </div>
-            </div>
           </div>
         </div>
-        <div className="reading-timer">
-          <img src="/assets/home/timer.svg" alt="" />
 
-          <div style={{ textAlign: "center", marginTop: "50px" }}>
-            <h1>Time Left: {timeLeft} seconds</h1>
-          </div>
+        <div className="reading-timer">
+          {readingQuestions?.TimerPerMinutes && (
+            <ExamTimer
+              TimerPerMinutes={readingQuestions.TimerPerMinutes}
+              onTimeUp={handleTimeUp}
+              timeLeft={timeLeft}  // Pass timeLeft as a prop
+              setTimeLeft={setTimeLeft}  // Pass the setter function
+            />
+          )}
         </div>
 
         {readingQuestions?.Topics?.map((topic: any, topicIndex: number) => (
@@ -252,8 +287,8 @@ const SpeakingQuestions: React.FC = () => {
               {topic.TitleEn}
             </h3>
             {topic.Questions.map((question, questionIndex) => (
-              <div>
-                <p key={questionIndex}>{question.ContentQuestion}</p>
+              <div key={questionIndex}>
+                <p>{question.ContentQuestion}</p>
                 <div className="img-wrapper">
                   {topic?.File ? (
                     <img
@@ -262,11 +297,8 @@ const SpeakingQuestions: React.FC = () => {
                       alt="Topic Image"
                     />
                   ) : (
-                    <div className="flex items-center justify-center">
-                      {/* <span>No Image</span> */}
-                    </div>
+                    <div className="flex items-center justify-center"></div>
                   )}
-                  {/* <img src="/assets/exams/school.svg" alt="" /> */}
                 </div>
                 <div className="writing-area-container">
                   <div>
@@ -317,8 +349,6 @@ const SpeakingQuestions: React.FC = () => {
                 </div>
               </div>
             ))}
-
-            {/* <p className="about-title">{topic.TopicContent}</p> */}
           </div>
         ))}
 

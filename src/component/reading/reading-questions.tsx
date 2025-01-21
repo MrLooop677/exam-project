@@ -1,8 +1,22 @@
-import React, { ChangeEvent, useState } from "react";
+import React, { ChangeEvent, useEffect, useState } from "react";
 import Header from "../../layout/header";
 import Footer from "../../layout/footer";
+import {
+  getAllQuestionsReading,
+  getAllQuestionsTopicReading,
+  getAllTopicsListining,
+  getAllTopicsReading,
+} from "../../api/adminApis";
+import { useParams } from "react-router-dom";
 
 const ReadingQuestions: React.FC = () => {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [readingQuestions, setReadingQuestions] = useState<any>(null);
+  const [topics, setTopics] = useState<any>(null);
+  const { examId } = useParams();
+  const [topicsWithQuestions, setTopicsWithQuestions] = useState<any[]>([]); // Store topics with their questions
+
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const [placedWords, setPlacedWords] = useState<(string | null)[]>([
     null,
@@ -123,7 +137,48 @@ const ReadingQuestions: React.FC = () => {
   const handleTextChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {
     setText(event.target.value);
   };
+  useEffect(() => {
+    const fetchTopicsAndQuestions = async () => {
+      try {
+        setLoading(true);
 
+        // Fetch topics
+        const topicsData = await getAllTopicsReading(examId, 1);
+        const topics = topicsData?.Data?.Topics;
+
+        if (topics && topics.length > 0) {
+          // Fetch questions for each topic
+          const topicsWithQuestionsPromises = topics.map(async (topic: any) => {
+            console.log("topic", topic);
+
+            const questionsData = await getAllQuestionsTopicReading(topic?.Id);
+            return {
+              TitleAr: topic?.TitleAr,
+              TitleEn: topic?.TitleEn,
+              topicId: topic?.Id,
+              TopicContent: topic?.TopicContent,
+              questions: questionsData?.Data || [],
+            };
+          });
+
+          const topicsWithQuestions = await Promise.all(
+            topicsWithQuestionsPromises
+          );
+          setTopicsWithQuestions(topicsWithQuestions);
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch topics and questions");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTopicsAndQuestions();
+  }, [examId]);
+  console.log("topicsWithQuestions", topicsWithQuestions);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
   return (
     <div className="mt-5">
       <Header />
@@ -170,80 +225,14 @@ const ReadingQuestions: React.FC = () => {
         <div className="reading-timer">
           <img src="/assets/home/timer.svg" alt="" />
         </div>
-        <div className="reading-comprehension">
-          <p className="comprehension-title">Reading Comprehension 1</p>
-          <div className="comprehension-questions">
-            <p className="question-title">Question Title</p>
-            <div className="comprehension-paragraph">
-              <p>
-                Lorem Ipsum is simply dummy text of the printing and typesetting
-                industry. Lorem Ipsum has been the industry's standard dummy
-                text ever since the 1500s, when an unknown printer took a galley
-                of type and scrambled it to make a type specimen book. It has
-                survived not only five centuries, but also the leap into
-                electronic typesetting, remaining essentially unchanged. 
-              </p>
-              <p>
-                Lorem Ipsum is simply dummy text of the printing and typesetting
-                industry. Lorem Ipsum has been the industry's standard dummy
-                text ever since the 1500s, when an unknown printer took a galley
-                of type and scrambled it to make a type specimen book. It has
-                survived not only five centuries, but also the leap into
-                electronic typesetting, remaining essentially unchanged. 
-              </p>
-            </div>
-            <div className="choose-the-correct-answer">
-              <p className="section-title">
-                <span className="question-num">1</span>
-                choose the correct answer
-              </p>
-              <div className="choose-questions">
-                <div className="question-item">
-                  <p className="question">
-                    <span className="question-letter">A</span>Question Title
-                  </p>
-                  <div className="answers">
-                    <label>
-                      <input type="radio" name="Q1" value="answer1" />
-                      answer 1
-                    </label>
-                    <label>
-                      <input type="radio" name="Q1" value="answer2" />
-                      answer 2
-                    </label>
-                    <label>
-                      <input type="radio" name="Q1" value="answer3" />
-                      answer 3
-                    </label>
-                  </div>
-                </div>
-                <div className="question-item">
-                  <p className="question">
-                    <span className="question-letter">B</span>Question Title
-                  </p>
-                  <div className="answers">
-                    <label>
-                      <input type="radio" name="Q2" value="answer1" />
-                      answer 1
-                    </label>
-                    <label>
-                      <input type="radio" name="Q2" value="answer2" />
-                      answer 2
-                    </label>
-                    <label>
-                      <input type="radio" name="Q2" value="answer3" />
-                      answer 3
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="true-or-false">
-              <p className="section-title">
-                <span className="question-num">2</span>True or false ?
-              </p>
-              <div className="true-or-false-question">
-                <p className="question">
+
+        {topicsWithQuestions.map((topic) => (
+          <div className="reading-comprehension" key={topic?.topicId}>
+            <p className="comprehension-title">{topic?.TitleAr}</p>
+            <div className="comprehension-questions">
+              <p className="question-title">Question Title</p>
+              <div className="comprehension-paragraph">
+                <p>
                   Lorem Ipsum is simply dummy text of the printing and
                   typesetting industry. Lorem Ipsum has been the industry's
                   standard dummy text ever since the 1500s, when an unknown
@@ -252,116 +241,195 @@ const ReadingQuestions: React.FC = () => {
                   also the leap into electronic typesetting, remaining
                   essentially unchanged. 
                 </p>
-                <div className="true-or-false-answer">
-                  <label className="true">
-                    <input type="radio" name="trueOrFalse" value="true" />
-                    True
-                  </label>
-                  <label className="false">
-                    <input type="radio" name="trueOrFalse" value="false" />
-                    False
-                  </label>
-                </div>
+                <p>
+                  Lorem Ipsum is simply dummy text of the printing and
+                  typesetting industry. Lorem Ipsum has been the industry's
+                  standard dummy text ever since the 1500s, when an unknown
+                  printer took a galley of type and scrambled it to make a type
+                  specimen book. It has survived not only five centuries, but
+                  also the leap into electronic typesetting, remaining
+                  essentially unchanged. 
+                </p>
               </div>
-            </div>
-            <div className="put-in-right-place">
-              <p className="section-title">
-                {" "}
-                <span className="question-num">3</span>Put words in right places
-              </p>
-              <div className="put-in-right-place-questions">
-                <div
-                  className="words-to-choose"
-                  onDrop={() => handleDrop(-1)} // Drop back to top
-                  onDragOver={handleDragOver}
-                >
-                  {words_1.map((word, index) => {
-                    const isUsed = placedWords.includes(word); // Check if word is in a box
-                    return (
-                      <div
-                        key={index}
-                        className={`word ${isUsed ? "used-word" : ""}`} // Apply "used-word" class if placed
-                        draggable={!isUsed} // Disable dragging if placed in a box
-                        onDragStart={() => handleDragStart(word)}
-                      >
-                        {word}
-                      </div>
-                    );
-                  })}
+              {topic?.questions?.map((question: any, index: number) => (
+                <div className="question-item" key={index}>
+                  {/* {renderQuestion(question)} */}
                 </div>
-                {placedWords.map((word, index) => (
-                  <div className="words-description" key={index}>
-                    <p className="description">
-                      Lorem Ipsum is simply dummy text of the printing and
-                      typesetting industry.
+              ))}
+              <div className="choose-the-correct-answer">
+                <p className="section-title">
+                  <span className="question-num">1</span>
+                  choose the correct answer
+                </p>
+                <div className="choose-questions">
+                  <div className="question-item">
+                    <p className="question">
+                      <span className="question-letter">A</span>Question Title
                     </p>
-                    <div
-                      className="drag-box"
-                      onDrop={() => handleDrop(index)}
-                      onDragOver={handleDragOver}
-                      draggable={!!word} // Allow dragging from box if there's a word
-                      onDragStart={() => handleDragStart(word as string)}
-                    >
-                      {word || ""}
+                    <div className="answers">
+                      <label>
+                        <input type="radio" name="Q1" value="answer1" />
+                        answer 1
+                      </label>
+                      <label>
+                        <input type="radio" name="Q1" value="answer2" />
+                        answer 2
+                      </label>
+                      <label>
+                        <input type="radio" name="Q1" value="answer3" />
+                        answer 3
+                      </label>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="arrange-words">
-              <p className="section-title">
-                {" "}
-                <span className="question-num">4</span>Drag and Drop to Arrange
-                Words
-              </p>
-              <div className="arrange-words-question">
-                <div
-                  className="words-to-arrange"
-                  onDrop={handleListDrop}
-                  onDragOver={allowDrop}
-                >
-                  {words.map((word) => (
-                    <p
-                      key={word}
-                      className={`word ${
-                        usedWords.includes(word) ? "used-word" : ""
-                      }`}
-                      draggable
-                      onDragStart={(event) => handleWordDragStart(event, word)}
-                    >
-                      {word}
+                  <div className="question-item">
+                    <p className="question">
+                      <span className="question-letter">B</span>Question Title
                     </p>
-                  ))}
+                    <div className="answers">
+                      <label>
+                        <input type="radio" name="Q2" value="answer1" />
+                        answer 1
+                      </label>
+                      <label>
+                        <input type="radio" name="Q2" value="answer2" />
+                        answer 2
+                      </label>
+                      <label>
+                        <input type="radio" name="Q2" value="answer3" />
+                        answer 3
+                      </label>
+                    </div>
+                  </div>
                 </div>
-
-                <div className="words-place">
-                  {slots.map((slot, index) => (
-                    <div
-                      key={index}
-                      className="gray-box-slot"
-                      onDrop={(event) => handleSlotDrop(event, index)}
-                      onDragOver={allowDrop}
-                    >
-                      {slot ? (
-                        <p
-                          className="word-in-slot"
-                          draggable
-                          onDragStart={(event) =>
-                            handleWordDragStart(event, slot)
-                          }
+              </div>
+              <div className="true-or-false">
+                <p className="section-title">
+                  <span className="question-num">2</span>True or false ?
+                </p>
+                <div className="true-or-false-question">
+                  <p className="question">
+                    Lorem Ipsum is simply dummy text of the printing and
+                    typesetting industry. Lorem Ipsum has been the industry's
+                    standard dummy text ever since the 1500s, when an unknown
+                    printer took a galley of type and scrambled it to make a
+                    type specimen book. It has survived not only five centuries,
+                    but also the leap into electronic typesetting, remaining
+                    essentially unchanged. 
+                  </p>
+                  <div className="true-or-false-answer">
+                    <label className="true">
+                      <input type="radio" name="trueOrFalse" value="true" />
+                      True
+                    </label>
+                    <label className="false">
+                      <input type="radio" name="trueOrFalse" value="false" />
+                      False
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div className="put-in-right-place">
+                <p className="section-title">
+                  {" "}
+                  <span className="question-num">3</span>Put words in right
+                  places
+                </p>
+                <div className="put-in-right-place-questions">
+                  <div
+                    className="words-to-choose"
+                    onDrop={() => handleDrop(-1)} // Drop back to top
+                    onDragOver={handleDragOver}
+                  >
+                    {words_1.map((word, index) => {
+                      const isUsed = placedWords.includes(word); // Check if word is in a box
+                      return (
+                        <div
+                          key={index}
+                          className={`word ${isUsed ? "used-word" : ""}`} // Apply "used-word" class if placed
+                          draggable={!isUsed} // Disable dragging if placed in a box
+                          onDragStart={() => handleDragStart(word)}
                         >
-                          {slot}
-                        </p>
-                      ) : (
-                        ""
-                      )}
+                          {word}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {placedWords.map((word, index) => (
+                    <div className="words-description" key={index}>
+                      <p className="description">
+                        Lorem Ipsum is simply dummy text of the printing and
+                        typesetting industry.
+                      </p>
+                      <div
+                        className="drag-box"
+                        onDrop={() => handleDrop(index)}
+                        onDragOver={handleDragOver}
+                        draggable={!!word} // Allow dragging from box if there's a word
+                        onDragStart={() => handleDragStart(word as string)}
+                      >
+                        {word || ""}
+                      </div>
                     </div>
                   ))}
+                </div>
+              </div>
+              <div className="arrange-words">
+                <p className="section-title">
+                  {" "}
+                  <span className="question-num">4</span>Drag and Drop to
+                  Arrange Words
+                </p>
+                <div className="arrange-words-question">
+                  <div
+                    className="words-to-arrange"
+                    onDrop={handleListDrop}
+                    onDragOver={allowDrop}
+                  >
+                    {words.map((word) => (
+                      <p
+                        key={word}
+                        className={`word ${
+                          usedWords.includes(word) ? "used-word" : ""
+                        }`}
+                        draggable
+                        onDragStart={(event) =>
+                          handleWordDragStart(event, word)
+                        }
+                      >
+                        {word}
+                      </p>
+                    ))}
+                  </div>
+
+                  <div className="words-place">
+                    {slots.map((slot, index) => (
+                      <div
+                        key={index}
+                        className="gray-box-slot"
+                        onDrop={(event) => handleSlotDrop(event, index)}
+                        onDragOver={allowDrop}
+                      >
+                        {slot ? (
+                          <p
+                            className="word-in-slot"
+                            draggable
+                            onDragStart={(event) =>
+                              handleWordDragStart(event, slot)
+                            }
+                          >
+                            {slot}
+                          </p>
+                        ) : (
+                          ""
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        ))}
         <div className="txt-area-question">
           <p className="topic-num">Topic 3</p>
           <div className="topic-question">
