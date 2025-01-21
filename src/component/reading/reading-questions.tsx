@@ -175,6 +175,200 @@ const ReadingQuestions: React.FC = () => {
 
     fetchTopicsAndQuestions();
   }, [examId]);
+  const renderQuestion = (question: any) => {
+    switch (question?.QuestionType) {
+      case 1:
+        return (
+          <div className="true-or-false">
+            <p className="section-title">
+              {/* <span className="question-num">2</span>True or false ? */}
+              {question?.ContentQuestion}
+            </p>
+            <div className="true-or-false-question">
+              <p className="question">
+                Lorem Ipsum is simply dummy text of the printing and typesetting
+                industry. Lorem Ipsum has been the industry's standard dummy
+                text ever since the 1500s, when an unknown printer took a galley
+                of type and scrambled it to make a type specimen book. It has
+                survived not only five centuries, but also the leap into
+                electronic typesetting, remaining essentially unchanged. 
+              </p>
+
+              <div className="true-or-false-answer">
+                {question?.Answers.map((answer: any, index: number) => (
+                  <label className="true" key={index}>
+                    <input type="radio" name={answer?.Id} value="true" />
+                    {answer?.Answer}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="write-about-wrapper">
+            <p className="question-title">Question Title</p>
+            {question?.File && (
+              <div className="img-wrapper">
+                <img src={question?.File} alt="" />
+              </div>
+            )}
+
+            <p className="about-title">{question?.ContentQuestion}</p>
+            <div className="writing-area-container">
+              <textarea
+                className="writing-area"
+                value={text}
+                onChange={handleTextChange}
+                maxLength={200}
+              />
+              <div className={`count ${text.length >= 180 ? "warning" : ""}`}>
+                {text.length} / 200
+              </div>
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="choose-the-correct-answer">
+            <p className="section-title">
+              <span className="question-num">1</span>
+              choose the correct answer
+            </p>
+            <div className="choose-questions">
+              <div className="question-item">
+                <p className="question">
+                  {/* <span className="question-letter">A</span>Question Title */}
+                  {question?.ContentQuestion}
+                </p>
+                <div className="answers">
+                  {question?.Answers.map((answer: any, index: number) => (
+                    <label key={index}>
+                      <input
+                        type="radio"
+                        name={answer?.QuestionId}
+                        value="answer1"
+                      />
+                      {answer?.Answer}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="arrange-words">
+            <p className="section-title">
+              {" "}
+              {/* <span className="question-num">4</span>Drag and Drop to Arrange
+              Words */}
+              {question?.ContentQuestion}
+            </p>
+            <div className="arrange-words-question">
+              <div
+                className="words-to-arrange"
+                onDrop={handleListDrop}
+                onDragOver={allowDrop}
+              >
+                {question?.Answers.map((word) => (
+                  <p
+                    key={word?.Answer}
+                    className={`word ${
+                      usedWords.includes(word?.Answer) ? "used-word" : ""
+                    }`}
+                    draggable
+                    onDragStart={(event) =>
+                      handleWordDragStart(event, word?.Answer)
+                    }
+                  >
+                    {word?.Answer}
+                  </p>
+                ))}
+              </div>
+
+              <div className="words-place">
+                {slots.map((slot, index) => (
+                  <div
+                    key={index}
+                    className="gray-box-slot"
+                    onDrop={(event) => handleSlotDrop(event, index)}
+                    onDragOver={allowDrop}
+                  >
+                    {slot ? (
+                      <p
+                        className="word-in-slot"
+                        draggable
+                        onDragStart={(event) =>
+                          handleWordDragStart(event, slot)
+                        }
+                      >
+                        {slot}
+                      </p>
+                    ) : (
+                      ""
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      case 6:
+        return (
+          <div className="put-in-right-place">
+            <p className="section-title">
+              {" "}
+              {/* <span className="question-num">3</span>Put words in right places */}
+              {question?.ContentQuestion}
+            </p>
+            <div className="put-in-right-place-questions">
+              <div
+                className="words-to-choose"
+                onDrop={() => handleDrop(-1)} // Drop back to top
+                onDragOver={handleDragOver}
+              >
+                {question?.Answers.map((word, index) => {
+                  const isUsed = placedWords.includes(word?.Answer); // Check if word is in a box
+                  return (
+                    <div
+                      key={index}
+                      className={`word ${isUsed ? "used-word" : ""}`} // Apply "used-word" class if placed
+                      draggable={!isUsed} // Disable dragging if placed in a box
+                      onDragStart={() => handleDragStart(word?.Answer)}
+                    >
+                      {word?.Answer}
+                    </div>
+                  );
+                })}
+              </div>
+              {placedWords.map((word, index) => (
+                <div className="words-description" key={index}>
+                  <p className="description">
+                    Lorem Ipsum is simply dummy text of the printing and
+                    typesetting industry.
+                  </p>
+                  <div
+                    className="drag-box"
+                    onDrop={() => handleDrop(index)}
+                    onDragOver={handleDragOver}
+                    draggable={!!word} // Allow dragging from box if there's a word
+                    onDragStart={() => handleDragStart(word as string)}
+                  >
+                    {word || ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      default:
+        return <div>Question type not supported</div>;
+    }
+  };
+
   console.log("topicsWithQuestions", topicsWithQuestions);
 
   if (loading) return <div>Loading...</div>;
@@ -253,223 +447,18 @@ const ReadingQuestions: React.FC = () => {
               </div>
               {topic?.questions?.map((question: any, index: number) => (
                 <div className="question-item" key={index}>
-                  {/* {renderQuestion(question)} */}
+                  {renderQuestion(question)}
                 </div>
               ))}
-              <div className="choose-the-correct-answer">
-                <p className="section-title">
-                  <span className="question-num">1</span>
-                  choose the correct answer
-                </p>
-                <div className="choose-questions">
-                  <div className="question-item">
-                    <p className="question">
-                      <span className="question-letter">A</span>Question Title
-                    </p>
-                    <div className="answers">
-                      <label>
-                        <input type="radio" name="Q1" value="answer1" />
-                        answer 1
-                      </label>
-                      <label>
-                        <input type="radio" name="Q1" value="answer2" />
-                        answer 2
-                      </label>
-                      <label>
-                        <input type="radio" name="Q1" value="answer3" />
-                        answer 3
-                      </label>
-                    </div>
-                  </div>
-                  <div className="question-item">
-                    <p className="question">
-                      <span className="question-letter">B</span>Question Title
-                    </p>
-                    <div className="answers">
-                      <label>
-                        <input type="radio" name="Q2" value="answer1" />
-                        answer 1
-                      </label>
-                      <label>
-                        <input type="radio" name="Q2" value="answer2" />
-                        answer 2
-                      </label>
-                      <label>
-                        <input type="radio" name="Q2" value="answer3" />
-                        answer 3
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="true-or-false">
-                <p className="section-title">
-                  <span className="question-num">2</span>True or false ?
-                </p>
-                <div className="true-or-false-question">
-                  <p className="question">
-                    Lorem Ipsum is simply dummy text of the printing and
-                    typesetting industry. Lorem Ipsum has been the industry's
-                    standard dummy text ever since the 1500s, when an unknown
-                    printer took a galley of type and scrambled it to make a
-                    type specimen book. It has survived not only five centuries,
-                    but also the leap into electronic typesetting, remaining
-                    essentially unchanged. 
-                  </p>
-                  <div className="true-or-false-answer">
-                    <label className="true">
-                      <input type="radio" name="trueOrFalse" value="true" />
-                      True
-                    </label>
-                    <label className="false">
-                      <input type="radio" name="trueOrFalse" value="false" />
-                      False
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div className="put-in-right-place">
-                <p className="section-title">
-                  {" "}
-                  <span className="question-num">3</span>Put words in right
-                  places
-                </p>
-                <div className="put-in-right-place-questions">
-                  <div
-                    className="words-to-choose"
-                    onDrop={() => handleDrop(-1)} // Drop back to top
-                    onDragOver={handleDragOver}
-                  >
-                    {words_1.map((word, index) => {
-                      const isUsed = placedWords.includes(word); // Check if word is in a box
-                      return (
-                        <div
-                          key={index}
-                          className={`word ${isUsed ? "used-word" : ""}`} // Apply "used-word" class if placed
-                          draggable={!isUsed} // Disable dragging if placed in a box
-                          onDragStart={() => handleDragStart(word)}
-                        >
-                          {word}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {placedWords.map((word, index) => (
-                    <div className="words-description" key={index}>
-                      <p className="description">
-                        Lorem Ipsum is simply dummy text of the printing and
-                        typesetting industry.
-                      </p>
-                      <div
-                        className="drag-box"
-                        onDrop={() => handleDrop(index)}
-                        onDragOver={handleDragOver}
-                        draggable={!!word} // Allow dragging from box if there's a word
-                        onDragStart={() => handleDragStart(word as string)}
-                      >
-                        {word || ""}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="arrange-words">
-                <p className="section-title">
-                  {" "}
-                  <span className="question-num">4</span>Drag and Drop to
-                  Arrange Words
-                </p>
-                <div className="arrange-words-question">
-                  <div
-                    className="words-to-arrange"
-                    onDrop={handleListDrop}
-                    onDragOver={allowDrop}
-                  >
-                    {words.map((word) => (
-                      <p
-                        key={word}
-                        className={`word ${
-                          usedWords.includes(word) ? "used-word" : ""
-                        }`}
-                        draggable
-                        onDragStart={(event) =>
-                          handleWordDragStart(event, word)
-                        }
-                      >
-                        {word}
-                      </p>
-                    ))}
-                  </div>
-
-                  <div className="words-place">
-                    {slots.map((slot, index) => (
-                      <div
-                        key={index}
-                        className="gray-box-slot"
-                        onDrop={(event) => handleSlotDrop(event, index)}
-                        onDragOver={allowDrop}
-                      >
-                        {slot ? (
-                          <p
-                            className="word-in-slot"
-                            draggable
-                            onDragStart={(event) =>
-                              handleWordDragStart(event, slot)
-                            }
-                          >
-                            {slot}
-                          </p>
-                        ) : (
-                          ""
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         ))}
-        <div className="txt-area-question">
-          <p className="topic-num">Topic 3</p>
-          <div className="topic-question">
-            <p className="question-title">Question Title</p>
-            <p>
-              Lorem Ipsum is simply dummy text of the printing and typesetting
-              industry. Lorem Ipsum has been the industry's standard dummy text
-              ever since the 1500s, when an unknown printer took a galley of
-              type and scrambled it to make a type specimen book. It has
-              survived not only five centuries, but also the leap into
-              electronic typesetting, remaining essentially unchanged. 
-            </p>
-            <div className="answer-area">
-              <textarea className="answer-textarea"></textarea>
-            </div>
-          </div>
-        </div>
+
         <div className="submit-and-move">
           <div></div>
           <button>Submit</button>
           <div className="next-arrow">
             <img src="/assets/assessment/next-arrow.svg" alt="" />
-          </div>
-        </div>
-        <div className="write-about-wrapper">
-          <div className="img-wrapper">
-            <img src="/assets/exams/school.svg" alt="" />
-          </div>
-
-          <p className="about-title">Write About Your School</p>
-          <div className="writing-area-container">
-            <textarea
-              className="writing-area"
-              value={text}
-              onChange={handleTextChange}
-              maxLength={200}
-            />
-            <div className={`count ${text.length >= 180 ? "warning" : ""}`}>
-              {text.length} / 200
-            </div>
           </div>
         </div>
       </div>
