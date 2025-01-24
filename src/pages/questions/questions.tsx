@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ReadingQuestions from "../../component/reading/reading-questions";
 import SpeakingQuestions from "../../component/speaking/speaking-questions";
 import WritingQuestions from "../../component/writing/writing-questions";
+import ListingQuestions from "../../component/listening/listening";
 
 const Questions: React.FC = () => {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ const Questions: React.FC = () => {
     case "Speaking":
       return <SpeakingQuestions />;
     case "Listening":
-      return <div>Listening</div>;
+      return <ListingQuestions />;
     default:
       return <div>Default</div>;
   }

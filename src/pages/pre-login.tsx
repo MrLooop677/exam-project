@@ -73,8 +73,9 @@ const PreLogin: React.FC = () => {
               />
               <h3 className="text-lg font-medium text-gray-700">Student</h3>
             </div>
-            <div
-              onClick={() => handleSelect("Schools")}
+            <a
+              href="https://sah-platform-admin-cpdsfdf8dkacfqgy.canadacentral-01.azurewebsites.net/school/school-students"
+              // onClick={() => handleSelect("Schools")}
               className={`flex flex-col items-center w-40 h-48 bg-gray-100 border-2 rounded-lg p-4 cursor-pointer ${
                 selectedItem === "Schools"
                   ? "border-purple-500"
@@ -87,7 +88,7 @@ const PreLogin: React.FC = () => {
                 className="mb-4"
               />
               <h3 className="text-lg font-medium text-gray-700">Schools</h3>
-            </div>
+            </a>
           </div>
         </div>
       </div>
