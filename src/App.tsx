@@ -11,7 +11,7 @@ import Questions from "./pages/questions/questions";
 import ReadingQuestions from "./pages/questions/reading/reading-questions";
 import WritingQuestions from "./pages/questions/writing/writing-questions";
 import { StudentFilePage } from "./pages/school-admin-view";
-
+console.log("djkfsghhk")
 const App = () => {
   return (
     <Router>
