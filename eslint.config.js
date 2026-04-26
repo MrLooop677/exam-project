@@ -24,6 +24,7 @@ export default tseslint.config(
       // 👇 اقلب كل حاجة WARN بدل ERROR
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": "off",
 
       "react-refresh/only-export-components": [
         "warn",
