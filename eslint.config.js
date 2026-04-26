@@ -19,6 +19,7 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      "no-irregular-whitespace": "off",
 
       // 👇 اقلب كل حاجة WARN بدل ERROR
       "@typescript-eslint/no-explicit-any": "warn",
