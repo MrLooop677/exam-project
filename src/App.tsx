@@ -12,7 +12,7 @@ import ReadingQuestions from "./pages/questions/reading/reading-questions";
 import WritingQuestions from "./pages/questions/writing/writing-questions";
 import { StudentFilePage } from "./pages/school-admin-view";
 
-const App = () => {
+const App = () => 
   return (
     <Router>
       <Routes>
